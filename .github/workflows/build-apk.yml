@@ -1,0 +1,100 @@
+name: Kawai Music APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      KAWAI_KEYSTORE_PATH: ${{ github.workspace }}/kawai-release.keystore
+      KAWAI_KEY_ALIAS: kawai-music
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Signing: if you add the repository secrets below, the same key signs every build
+      # (needed so users can update in place). Without them a fresh key is generated each run,
+      # which still produces an installable APK.
+      #   KAWAI_KEYSTORE_BASE64   base64 of your .keystore file
+      #   KAWAI_KEYSTORE_PASSWORD keystore + key password
+      - name: Prepare signing key
+        env:
+          KS_B64: ${{ secrets.KAWAI_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KAWAI_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ]; then
+            echo "$KS_B64" | base64 -d > "$KAWAI_KEYSTORE_PATH"
+            echo "KAWAI_KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+            echo "KAWAI_KEY_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+            echo "Using persistent keystore from secrets"
+          else
+            P="kawai$(openssl rand -hex 8)"
+            keytool -genkeypair -v -keystore "$KAWAI_KEYSTORE_PATH" -alias kawai-music \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$P" -keypass "$P" -dname "CN=Kawai Music, O=Kawai, C=US"
+            echo "KAWAI_KEYSTORE_PASSWORD=$P" >> "$GITHUB_ENV"
+            echo "KAWAI_KEY_PASSWORD=$P" >> "$GITHUB_ENV"
+            echo "No signing secrets set - generated a temporary key"
+          fi
+
+      - name: Build release APK
+        run: |
+          set -o pipefail
+          chmod +x ./gradlew
+          ./gradlew --no-daemon --console=plain assembleRelease 2>&1 | tee build.log
+
+      # On failure: surface compiler errors as annotations and keep the full log on a
+      # separate branch so it can be read without opening the Actions UI.
+      - name: Publish build log on failure
+        if: failure()
+        run: |
+          grep -E '^e: |What went wrong|error:' -A2 build.log | head -60 | while IFS= read -r line; do echo "::error::${line}"; done || true
+          mkdir -p "$RUNNER_TEMP/logs" && cp build.log "$RUNNER_TEMP/logs/build.log"
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git checkout --orphan ci-logs
+          git rm -rf -q . || true
+          cp "$RUNNER_TEMP/logs/build.log" build.log
+          git add -f build.log
+          git commit -q -m "build log for run ${{ github.run_id }}"
+          git push -f origin ci-logs
+
+      - name: Name and verify APK
+        run: |
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          test -n "$APK"
+          mkdir -p dist
+          cp "$APK" dist/kawai-music.apk
+          unzip -tq dist/kawai-music.apk
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs dist/kawai-music.apk | head -3
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kawai-music
+          path: dist/kawai-music.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          gh release create "$TAG" dist/kawai-music.apk \
+            --title "Kawai Music build ${{ github.run_number }}" \
+            --notes "Signed release APK built by GitHub Actions."
