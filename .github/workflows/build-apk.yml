@@ -16,14 +16,20 @@ jobs:
       KAWAI_KEYSTORE_PATH: ${{ github.workspace }}/kawai-release.keystore
       KAWAI_KEY_ALIAS: kawai-music
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      # Hosted Ubuntu runners already include the Android SDK; just accept its licences.
+      - name: Accept Android SDK licences
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          SDKM=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)
+          echo "sdkmanager: $SDKM"
+          if [ -n "$SDKM" ]; then yes | "$SDKM" --licenses > /dev/null || true; fi
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -63,6 +69,7 @@ jobs:
       - name: Publish build log on failure
         if: failure()
         run: |
+          touch build.log
           grep -E '^e: |What went wrong|error:' -A2 build.log | head -60 | while IFS= read -r line; do echo "::error::${line}"; done || true
           mkdir -p "$RUNNER_TEMP/logs" && cp build.log "$RUNNER_TEMP/logs/build.log"
           git config user.name "ci"
