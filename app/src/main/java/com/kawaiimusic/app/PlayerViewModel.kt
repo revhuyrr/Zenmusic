@@ -229,7 +229,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun setFilter(f: SearchFilter) {
+    fun selectFilter(f: SearchFilter) {
         filter = f
         if (query.isNotBlank()) search(query)
     }

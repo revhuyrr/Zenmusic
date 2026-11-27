@@ -259,7 +259,7 @@ private fun SearchTab(
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                     modifier = Modifier
                         .glass(RoundedCornerShape(50), if (selected) 0.30f else 0.10f)
-                        .clickable { vm.setFilter(f) }
+                        .clickable { vm.selectFilter(f) }
                         .padding(horizontal = 14.dp, vertical = 7.dp),
                 )
             }
