@@ -14,7 +14,7 @@ screens on a glass (liquid-glass) interface in white / soft-pink branding.
 ## Build the APK on GitHub
 1. Push this folder to your repository (keep the `.github` folder).
 2. Open **Actions** -> **Kawai Music APK** -> **Run workflow** (it also runs on every push to `main`).
-3. Download `kawai-music` from the run's **Artifacts**, or the APK from **Releases** when you ran it manually.
+3. Download `kawai-music` from the run's **Artifacts**, or the APK from **Releases** (a release is published for every build).
 
 ### Keep updates installable (recommended)
 Without secrets each build uses a temporary signing key, so a new APK cannot update an older install.
