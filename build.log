@@ -1,0 +1,41 @@
+Downloading https://services.gradle.org/distributions/gradle-9.8.1-bin.zip
+..............10%..............20%...............30%..............40%...............50%..............60%...............70%..............80%...............90%..............100%
+
+Welcome to Gradle 9.8.1!
+
+Here are the highlights of this release:
+ - Java 27 support
+ - Maven mirror settings reuse
+ - Linked problem locations in build output
+
+For more details see https://docs.gradle.org/9.8.1/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders
+> Task :app:mergeReleaseNativeLibs FAILED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_3-1795851076180.json
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:mergeReleaseNativeLibs' (registered by plugin 'com.android.internal.application').
+> Could not resolve all files for configuration ':app:releaseRuntimeClasspath'.
+   > Could not find com.github.teamnewpipe:NewPipeExtractor:v0.26.1.
+     Searched in the following locations:
+       - https://dl.google.com/dl/android/maven2/com/github/teamnewpipe/NewPipeExtractor/v0.26.1/NewPipeExtractor-v0.26.1.pom
+       - https://repo.maven.apache.org/maven2/com/github/teamnewpipe/NewPipeExtractor/v0.26.1/NewPipeExtractor-v0.26.1.pom
+       - https://jitpack.io/com/github/teamnewpipe/NewPipeExtractor/v0.26.1/NewPipeExtractor-v0.26.1.pom
+     Required by:
+         project ':app'
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 44s
+2 actionable tasks: 2 executed
