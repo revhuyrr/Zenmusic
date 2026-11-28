@@ -83,5 +83,5 @@ dependencies {
     implementation("androidx.media3:media3-datasource:$media3")
 
     // Resolves playable stream URLs (signature / throttling-parameter decoding).
-    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.26.1")
+    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.1")
 }
