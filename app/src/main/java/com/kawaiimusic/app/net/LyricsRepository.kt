@@ -11,7 +11,7 @@ import java.net.URLEncoder
 
 /** Time-synced lyrics from LRCLIB (https://lrclib.net), cached on disk per song. */
 object LyricsRepository {
-    private const val UA = "KawaiMusic/1.0 (https://github.com/revhuyrr/zenmusic)"
+    private const val UA = "KawaiMusic/1.1.0 by Zenith (https://github.com/revhuyrr/zenmusic)"
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 

@@ -10,9 +10,25 @@ import java.util.concurrent.ConcurrentHashMap
 object StreamRepository {
     private val cache = ConcurrentHashMap<String, InnerTube.StreamInfo>()
 
+    /** Short description of the most recent failure, shown in the app so problems are visible. */
+    @Volatile var lastError: String? = null
+
     fun resolve(videoId: String): InnerTube.StreamInfo {
         cache[videoId]?.let { if (it.expiresAtMs > System.currentTimeMillis()) return it }
-        val info = InnerTube.resolveStream(videoId)
+        // NewPipeExtractor first (it decodes YouTube's signature / throttling parameters);
+        // the plain client chain is the fallback.
+        val info = try {
+            NewPipeStreams.resolve(videoId)
+        } catch (first: Exception) {
+            try {
+                InnerTube.resolveStream(videoId)
+            } catch (second: Exception) {
+                lastError = "${first.javaClass.simpleName}: ${first.message?.take(90)}"
+                second.addSuppressed(first)
+                throw second
+            }
+        }
+        lastError = null
         cache[videoId] = info
         return info
     }

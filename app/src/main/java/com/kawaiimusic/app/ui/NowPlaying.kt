@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -32,6 +31,7 @@ import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -66,9 +66,13 @@ fun NowPlayingScreen(
     var showLyrics by remember { mutableStateOf(false) }
     var scrubbing by remember { mutableStateOf(false) }
     var scrubValue by remember { mutableFloatStateOf(0f) }
+    val backdrop = rememberGlassBackdrop()
 
     Box(Modifier.fillMaxSize()) {
-        AmbientBackground(song.thumb, vm.accent)
+        // Glass source: only the ambient artwork lives in it, controls are siblings drawn after.
+        Box(Modifier.fillMaxSize().glassSource(backdrop)) {
+            AmbientBackground(song.thumb, vm.accent)
+        }
 
         Column(
             Modifier
@@ -78,26 +82,20 @@ fun NowPlayingScreen(
                 .padding(horizontal = 24.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // grabber + close
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            // grabber
+            Box(Modifier.fillMaxWidth().clickable(onClick = onClose).padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                 Box(
                     Modifier
-                        .padding(top = 4.dp)
-                        .width(40.dp)
+                        .width(44.dp)
                         .height(5.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.4f))
-                        .clickable(onClick = onClose)
+                        .background(Color.White.copy(alpha = 0.45f))
                 )
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
             Crossfade(targetState = showLyrics, modifier = Modifier.weight(1f).fillMaxWidth(), label = "mode") { lyricsMode ->
-                if (lyricsMode) {
-                    LyricsPane(vm)
-                } else {
-                    ArtworkPane(vm)
-                }
+                if (lyricsMode) LyricsPane(vm) else ArtworkPane(vm)
             }
 
             Spacer(Modifier.height(12.dp))
@@ -114,14 +112,14 @@ fun NowPlayingScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        song.artist,
-                        color = Color.White.copy(alpha = 0.65f),
+                        vm.playbackError ?: song.artist,
+                        color = if (vm.playbackError != null) Color(0xFFFFB4B4) else Color.White.copy(alpha = 0.65f),
                         fontSize = 17.sp,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                GlassIconButton(Icons.Rounded.PlaylistAdd, "Add to playlist", onAddToPlaylist, size = 40.dp)
+                GlassIconButton(backdrop, Icons.Rounded.PlaylistAdd, "Add to playlist", onAddToPlaylist, size = 44.dp)
             }
 
             // progress
@@ -146,51 +144,67 @@ fun NowPlayingScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // transport
+            // transport (glass circles)
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GlassIconButton(Icons.Rounded.SkipPrevious, "Previous", vm::previous, size = 60.dp)
-                GlassIconButton(
-                    if (vm.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    if (vm.isPlaying) "Pause" else "Play",
-                    vm::togglePlay,
-                    size = 76.dp,
-                )
-                GlassIconButton(Icons.Rounded.SkipNext, "Next", vm::next, size = 60.dp)
+                GlassIconButton(backdrop, Icons.Rounded.SkipPrevious, "Previous", vm::previous, size = 62.dp)
+                Box(contentAlignment = Alignment.Center) {
+                    GlassIconButton(
+                        backdrop,
+                        if (vm.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        if (vm.isPlaying) "Pause" else "Play",
+                        vm::togglePlay,
+                        size = 80.dp,
+                    )
+                    if (vm.isBuffering) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.5.dp,
+                            modifier = Modifier.size(80.dp),
+                        )
+                    }
+                }
+                GlassIconButton(backdrop, Icons.Rounded.SkipNext, "Next", vm::next, size = 62.dp)
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(18.dp))
 
-            // bottom glass bar: shuffle / lyrics / repeat
+            // bottom glass capsule: shuffle / lyrics / repeat
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .glass(RoundedCornerShape(28.dp), strength = 0.12f)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .liquidGlass(backdrop, RoundedCornerShape(30.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GlassIconButton(
-                    Icons.Rounded.Shuffle, "Shuffle", vm::toggleShuffle,
-                    size = 44.dp, active = vm.shuffle,
-                    tint = if (vm.shuffle) KawaiPinkSoft else Color.White,
-                )
-                GlassIconButton(
-                    Icons.Rounded.Lyrics, "Lyrics", { showLyrics = !showLyrics },
-                    size = 44.dp, active = showLyrics,
-                    tint = if (showLyrics) KawaiPinkSoft else Color.White,
-                )
-                GlassIconButton(
+                CapsuleButton(Icons.Rounded.Shuffle, "Shuffle", vm.shuffle, vm::toggleShuffle)
+                CapsuleButton(Icons.Rounded.Lyrics, "Lyrics", showLyrics) { showLyrics = !showLyrics }
+                CapsuleButton(
                     if (vm.repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                    "Repeat", vm::cycleRepeat,
-                    size = 44.dp, active = vm.repeatMode != Player.REPEAT_MODE_OFF,
-                    tint = if (vm.repeatMode != Player.REPEAT_MODE_OFF) KawaiPinkSoft else Color.White,
+                    "Repeat",
+                    vm.repeatMode != Player.REPEAT_MODE_OFF,
+                    vm::cycleRepeat,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CapsuleButton(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, active: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(if (active) Color.White.copy(alpha = 0.22f) else Color.Transparent)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, description, tint = if (active) Color.White else Color.White.copy(alpha = 0.75f), modifier = Modifier.size(24.dp))
     }
 }
 
@@ -231,7 +245,7 @@ private fun LyricsPane(vm: PlayerViewModel) {
         if (lyrics == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    if (vm.lyricsLoading) "Loading lyrics\u2026" else "No lyrics found for this song",
+                    if (vm.lyricsLoading) "Loading lyrics…" else "No lyrics found for this song",
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,

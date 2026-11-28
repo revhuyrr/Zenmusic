@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       # Hosted Ubuntu runners already include the Android SDK; just accept its licences.
       - name: Accept Android SDK licences

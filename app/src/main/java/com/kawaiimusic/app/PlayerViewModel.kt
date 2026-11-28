@@ -81,7 +81,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             updateCurrent(mediaItem)
-            controller?.let { durationMs = it.duration.coerceAtLeast(0L) }
+            controller?.let { c ->
+                durationMs = c.duration.coerceAtLeast(0L)
+                // Keep related songs coming: when the queue is nearly used up, fetch more.
+                val remaining = c.mediaItemCount - c.currentMediaItemIndex - 1
+                if (remaining <= 2) current?.let { appendRelated(it) }
+            }
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -109,7 +114,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 c.play()
                 return
             }
-            playbackError = "Couldn't play this song"
+            playbackError = StreamRepository.lastError?.let { "Can't play: $it" } ?: "Couldn't play this song"
             if (c.hasNextMediaItem()) {
                 c.seekToNextMediaItem()
                 c.prepare()
@@ -292,16 +297,28 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         detailLoading = false
     }
 
-    /** Plays/opens whatever the user tapped in a list of mixed items. */
-    fun onItemClick(item: MusicItem, siblings: List<MusicItem>) {
-        if (item.kind == Kind.SONG) {
+    /**
+     * Plays/opens whatever the user tapped.
+     *
+     * [asQueue] = true (album / artist / playlist pages) plays the page's songs in order.
+     * Otherwise (search results, Home shelves) only the tapped song is queued, followed by
+     * songs related to it - not the rest of the result list.
+     */
+    fun onItemClick(item: MusicItem, siblings: List<MusicItem>, asQueue: Boolean = false) {
+        if (item.kind != Kind.SONG) {
+            openCollection(item)
+            return
+        }
+        if (asQueue) {
             val songs = siblings.filter { it.kind == Kind.SONG }.mapNotNull { it.toSong() }
             val index = songs.indexOfFirst { it.id == item.videoId }
             if (index >= 0) playSongs(songs, index)
         } else {
-            openCollection(item)
+            item.toSong()?.let { playWithRelated(it) }
         }
     }
+
+    fun playWithRelated(song: Song) = playSongs(listOf(song), 0)
 
     // ---- playback -------------------------------------------------------------------------
 
@@ -313,11 +330,15 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         c.prepare()
         c.play()
         playbackError = null
-        if (list.size == 1) addRadio(list[0])
+        relatedJobFor = null // lets the transition listener fetch related songs for this queue
     }
 
-    /** Keeps music going after a single song by appending YouTube Music's radio for it. */
-    private fun addRadio(song: Song) {
+    private var relatedJobFor: String? = null
+
+    /** Fetches songs related to [song] (YouTube Music radio) and appends the ones not queued yet. */
+    private fun appendRelated(song: Song) {
+        if (relatedJobFor == song.id) return
+        relatedJobFor = song.id
         viewModelScope.launch {
             val more = try {
                 withContext(Dispatchers.IO) { MusicApi.radio(song.id) }
@@ -325,9 +346,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 emptyList()
             }
             val c = controller ?: return@launch
-            if (current?.id == song.id && c.mediaItemCount == 1) {
-                c.addMediaItems(more.filter { it.id != song.id }.map { it.toMediaItem() })
-            }
+            val queued = (0 until c.mediaItemCount).map { c.getMediaItemAt(it).mediaId }.toSet()
+            val fresh = more.filter { it.id !in queued }
+            if (fresh.isNotEmpty()) c.addMediaItems(fresh.map { it.toMediaItem() })
         }
     }
 

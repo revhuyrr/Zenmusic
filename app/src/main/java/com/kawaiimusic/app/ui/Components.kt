@@ -66,7 +66,7 @@ fun ItemRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .let { if (highlighted) it.glass(RoundedCornerShape(16.dp), 0.12f) else it }
+            .let { if (highlighted) it.frost(RoundedCornerShape(16.dp), 0.12f) else it }
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -127,7 +127,7 @@ fun CenterMessage(text: String, actionLabel: String? = null, onAction: (() -> Un
                     color = Color.White,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
-                        .glass(RoundedCornerShape(50), 0.22f)
+                        .frost(RoundedCornerShape(50), 0.22f)
                         .clickable(onClick = onAction)
                         .padding(horizontal = 24.dp, vertical = 10.dp),
                 )

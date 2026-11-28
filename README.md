@@ -33,3 +33,7 @@ The request layer is a Kotlin port of the Python [`innertube`](https://github.co
 and its Android/iOS client contexts to ask for an audio stream URL, which ExoPlayer plays. This relies on
 YouTube's private, undocumented API, which can change without notice and is outside YouTube's terms for apps;
 if playback ever stops working, the client versions in `net/InnerTube.kt` are the first place to look.
+
+## Credits
+
+Kawai Music is made by **Zenith**. Liquid glass via Kyant0 backdrop; streaming resolution via NewPipeExtractor; lyrics from LRCLIB.
